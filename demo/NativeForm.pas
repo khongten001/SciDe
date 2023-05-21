@@ -1,5 +1,5 @@
 unit NativeForm;
-
+{$mode delphi}
 interface
 
 uses

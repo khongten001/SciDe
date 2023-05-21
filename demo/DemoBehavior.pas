@@ -1,10 +1,10 @@
 unit DemoBehavior;
-
+{$mode delphi}
 interface
 
 uses
   Sciter, Messages, SysUtils, Classes, SciterAPI, Windows, Dialogs,
-  ShockwaveFlashObjects_TLB, Forms, ExtCtrls;
+  Forms, ExtCtrls;
 
 type
   TDemoBehavior = class(TElement)
@@ -34,19 +34,6 @@ type
     function QuerySubscriptionEvents: EVENT_GROUPS; override;
     procedure DoFocus(const Args: TElementOnFocusEventArgs); override;
     procedure DoMouse(const Args: TElementOnMouseEventArgs); override;
-  public
-    class function BehaviorName: AnsiString; override;
-  end;
-
-  TFlashBehavior = class(TElement)
-  private
-    FPanel: TPanel;
-    FPlayer: TShockwaveFlash;
-  protected
-    procedure DoBehaviorAttach(const Args: TElementOnBehaviorEventArgs); override;
-    procedure DoBehaviorDetach(const Args: TElementOnBehaviorEventArgs); override;
-    procedure DoSize(const Args: TElementOnSizeEventArgs); override;
-    procedure OnProgress(ASender: TObject; percentDone: Integer);
   public
     class function BehaviorName: AnsiString; override;
   end;
@@ -175,82 +162,10 @@ begin
   Result := HANDLE_FOCUS; // All other events will be rejected
 end;
 
-{ TFlashBehavior }
-
-class function TFlashBehavior.BehaviorName: AnsiString;
-begin
-  Result := 'FlashPlayer';
-end;
-
-procedure TFlashBehavior.DoBehaviorAttach(
-  const Args: TElementOnBehaviorEventArgs);
-var
-  h: HWINDOW;
-  sSrc: WideString;
-  sSrc1: WideString;
-begin
-  inherited;
-  h := GetHWND;
-  sSrc := Args.Element.Attr['src'];
-  try
-    FPanel := TPanel.CreateParented(h);
-    FPanel.HandleNeeded;
-    FPlayer := TShockwaveFlash.Create(FPanel);
-    FPlayer.Parent := FPanel;
-    FPlayer.Visible := True;
-    if sSrc <> '' then
-    begin
-      sSrc1 := ExpandFileName(sSrc);
-      if FileExists(sSrc1) then
-      begin
-       FPlayer.Movie := sSrc1;
-      end
-        else
-      begin
-        sSrc1 := Args.Element.CombineURL(sSrc);
-        FPlayer.Movie := sSrc1;
-      end;
-    end;
-    Self.AttachHwndToElement(FPanel.Handle);
-    FPanel.Height := 400;
-    FPanel.Width := 600;
-    FPlayer.Width := 600;
-    FPlayer.Height := 400;
-    Self.Update;
-    PostMessage(FPlayer.Handle, WM_ACTIVATE, 2, 0); // fix invalid startup size
-  except
-    on E:Exception do
-    begin
-      Self.Text := 'Failed to create ShockWave ActiveX control';
-    end;
-  end;
-end;
-
-procedure TFlashBehavior.DoBehaviorDetach(
-  const Args: TElementOnBehaviorEventArgs);
-begin
-  if FPanel <> nil then
-    FPanel.Free;
-  inherited;
-end;
-
-procedure TFlashBehavior.DoSize(const Args: TElementOnSizeEventArgs);
-begin
-  inherited;
-  FPlayer.Height := 200;
-  FPlayer.Width := 300;
-end;
-
-procedure TFlashBehavior.OnProgress(ASender: TObject;
-  percentDone: Integer);
-begin
-  Self.Update;
-end;
 
 initialization
 
   SciterRegisterBehavior(TDemoBehavior);
   SciterRegisterBehavior(TEventFilterBehavior);
-  SciterRegisterBehavior(TFlashBehavior);
 
 end.

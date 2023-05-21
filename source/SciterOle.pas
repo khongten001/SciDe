@@ -11,6 +11,8 @@
 
 unit SciterOle;
 
+{$i tis.sciter.defines.inc}
+
 interface
 
 uses

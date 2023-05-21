@@ -11,6 +11,8 @@
 
 unit TiScriptApi;
 
+{$i Sciter.inc}
+
 interface
 
 uses

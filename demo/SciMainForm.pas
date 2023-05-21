@@ -1,12 +1,12 @@
 unit SciMainForm;
-
+{$mode delphi}
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, SciterApi, TiScriptApi, Sciter, StdCtrls, OleCtrls,
+  Dialogs, SciterApi, TiScriptApi, Sciter, StdCtrls,
   ExtCtrls, ComCtrls, Menus, ComObj, ActiveX, SciDeDemo_TLB,
-  ComServ, AppEvnts, ToolWin, ImgList, ActnList, ShellAPI, System.Actions, System.ImageList;
+  ComServ, ToolWin, ImgList, ActnList, ShellAPI;
 
 type
   TMainForm = class(TForm)
@@ -71,6 +71,7 @@ type
     FButton: TButton;
     FTxtEvents: IElementEvents;
     FUrl: WideString;
+
     procedure OnBodyMethodCall(ASender: TObject; const Args: TElementOnScriptingCallArgs);
     procedure OnDivRequestDataArrived(ASender: TObject; const Args: TElementOnDataArrivedEventArgs);
     procedure OnDivTimer(ASender: TObject; const Args: TElementOnTimerEventArgs);
@@ -94,7 +95,6 @@ type
   end;
 
 
-function CreateObjectNative(vm: HVM): tiscript_value; cdecl;
 function SayHelloNative(c: HVM): tiscript_value; cdecl;
 
 var
@@ -102,7 +102,7 @@ var
 
 implementation
 
-uses SciterOle, SciterNative, NativeForm, Math;
+uses SciterNative, NativeForm, Math;
 
 {$R *.dfm}
 {$R ..\resources\Richtext.res}
@@ -151,7 +151,15 @@ var
   sUrl: WideString;
 begin
   DragAcceptFiles(Handle, True);
-  
+end;
+
+procedure TMainForm.FormShow(Sender: TObject);
+var
+  i: Integer;
+  sUrl: String;
+begin
+  Sciter1.Attach;
+
   Caption := Caption + ' :: Sciter version ' + Sciter1.Version;
   for i := 1 to ParamCount do
   begin
@@ -162,27 +170,23 @@ begin
   Open(sUrl);
 
   // Registering native functions
-  Sciter1.RegisterNativeFunction('CreateObject', ptiscript_method(@CreateObjectNative));
-  Sciter1.RegisterNativeFunction('SayHello',     ptiscript_method(@SayHelloNative));
+  //Sciter1.RegisterNativeFunction('SayHello',     ptiscript_method(@SayHelloNative));
 
   // Registering native form
-  nf := TNativeForm.Create;
-  Sciter1.RegisterNativeClass(nf, true);
+  //nf := TNativeForm.Create;
+  //Sciter1.RegisterNativeClass(nf, true);
 
   // Registering external OLE object variable
-  pTest := TTest.Create;
-  Sciter1.RegisterComObject('Test', pTest);
+  //pTest := TTest.Create;
+  //Sciter1.RegisterComObject('Test', pTest);
 
   // Registering another external OLE
 //  pXml := CreateOleObject('MSXML2.DOMDocument');
 //  pXml.LoadXML('<xml><item>Foo</item><item>Bar</item></xml>');
 //  Sciter1.RegisterComObject('XML', pXml);
 
-  Sciter1.Println('Hello', []);
-end;
+  //Sciter1.Println('Hello', []);
 
-procedure TMainForm.FormShow(Sender: TObject);
-begin
   Sciter1.SetFocus;
 end;
 
@@ -476,9 +480,9 @@ var
   pMemStm: TMemoryStream;
 begin
   try
-    if Pos(WideString('scide://'), Url) = 1 then
+    if Pos(WideString('file://'), Url) = 1 then
     begin
-      sFileName := StringReplace(Url, 'scide://', '', []);
+      sFileName := StringReplace(Url, 'file://', '', []);
       pMemStm := TMemoryStream.Create;
       pMemStm.LoadFromFile(sFileName);
       pMemStm.Position := 0;
@@ -532,7 +536,7 @@ begin
       SetLength(FileName, FileNameLength);
       DragQueryFile(DropH, I, PChar(FileName), FileNameLength + 1);
     end;
-    DragQueryPoint(DropH, DropPoint);
+    DragQueryPoint(DropH, @DropPoint);
   finally
     DragFinish(DropH);
   end;
@@ -548,31 +552,6 @@ begin
   ShowMessage('Hello!');
   Result := NI.int_value(0);
 end;
-
-function CreateObjectNative(vm: HVM): tiscript_value; cdecl;
-var
-  oVal: Variant;
-  tProgId: tiscript_value;
-  pProgId: PWideChar;
-  iCnt: UINT;
-  sProgId: WideString;
-begin
-  Result := NI.nothing_value;
-  try
-    iCnt := NI.get_arg_count(vm);
-    // TODO: Check args count
-
-    tProgId := NI.get_arg_n(vm, 2);
-    NI.get_string_value(tProgId, pProgId, iCnt);
-    sProgId := WideString(pProgId);
-    oVal := CreateOleObject(sProgId);
-    Result := WrapOleObject(vm, IDispatch(oVal));
-  except
-    on E:Exception do
-      ThrowError(vm, E.Message);
-  end;
-end;
-
 
 { TTest }
 

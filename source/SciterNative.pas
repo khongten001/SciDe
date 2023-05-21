@@ -11,6 +11,8 @@
 
 unit SciterNative;
 
+{$i Sciter.inc}
+
 interface
                                                                                   
 uses

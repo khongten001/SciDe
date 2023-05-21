@@ -11,6 +11,8 @@
 
 unit SciterApi;
 
+{$i Sciter.inc}
+
 interface
 
 uses
@@ -1617,7 +1619,7 @@ var
 begin
   if FAPI = nil then
   begin
-    HSCITER := LoadLibrary(PWideChar(SCITER_DLL_DIR + SCITER_DLL_FILENAME));
+    HSCITER := LoadLibrary(PChar(SCITER_DLL_DIR + SCITER_DLL_FILENAME));
     if HSCITER = 0 then
       raise ESciterException.Create('Failed to load Sciter DLL.');
 
@@ -1806,88 +1808,10 @@ function V2S(const Value: Variant; SciterValue: PSciterValue): UINT;
 var
   sWStr: WideString;
   i64: Int64;
-  c32: Cardinal;
   d: Double;
   date: TDateTime;
   st: SYSTEMTIME;
   ft: FILETIME;
-
-  procedure ProcessRecord(sval: PSciterValue; rectype, recobj: Pointer);
-
-    procedure ProcessValue(rval: TValue; var val: TSciterValue);
-    var
-      j: Integer;
-      bytes: TBytes;
-      elem: TSciterValue;
-      aval: TValue;
-    begin
-      if rval.Kind = tkInteger then
-        API.ValueIntDataSet(@val, rval.AsInteger, T_INT, 0)
-      else if rval.Kind = tkEnumeration then
-      begin
-        if GetTypeName(rval.TypeInfo) = 'Boolean' then
-        begin
-          if rval.AsOrdinal = 1 then
-            API.ValueIntDataSet(@val, 1, T_BOOL, 0)
-          else
-            API.ValueIntDataSet(@val, 0, T_BOOL, 0)
-        end else
-          API.ValueIntDataSet(@val, rval.AsOrdinal, T_INT, 0)
-      end
-      else if (rval.Kind = tkString) or (rval.Kind = tkWString) or (rval.Kind = tkUString) or (rval.Kind = tkLString) then
-        API.ValueStringDataSet(@val, PWideChar(rval.AsString), Length(rval.AsString), 0)
-      else if rval.Kind = tkFloat then
-      begin
-        date := TDateTime(rval.AsExtended);
-        d := Double(date);
-        VariantTimeToSystemTime(d, st);
-        SystemTimeToFileTime(st, ft);
-        i64 := Int64(ft);
-        Result := API.ValueInt64DataSet(@val, i64, T_DATE, UINT(True));
-      end else if (rval.Kind = tkArray) or (rval.Kind = tkDynArray) then
-      begin
-        if GetTypeName(rval.TypeInfo) = 'TArray<System.Byte>' then
-        begin
-          bytes := rval.AsType<TBytes>;
-          API.ValueBinaryDataSet(@val, PByte(bytes), Length(bytes), T_BYTES, 0);
-        end else
-        for j := 0 to rval.GetArrayLength - 1 do
-        begin
-          API.ValueInit(@elem);
-          aval := rval.GetArrayElement(j);
-          ProcessValue(aval, elem);
-          API.ValueNthElementValueSet(@val, j, @elem);
-          API.ValueClear(@elem);
-        end;
-      end else if rval.Kind = tkRecord then
-        ProcessRecord(@val, rval.TypeInfo, rval.GetReferenceToRawData)
-      else if rval.Kind = tkVariant then
-        V2S(rval.AsVariant, @val)
-      else
-        raise ESciterNotImplementedException.CreateFmt('Cannot convert record field of type %d to Sciter value.', [Integer(rval.Kind)]);
-    end;
-
-  var
-    i: Integer;
-    valfields: TArray<TRttiField>;
-    rval: TValue;
-    key, val: TSciterValue;
-  begin
-    valfields := TRTTIContext.Create.GetType(rectype).GetFields;
-    for i := Low(valfields) to High(valfields) do
-    begin
-      API.ValueInit(@key);
-      API.ValueInit(@val);
-      API.ValueStringDataSet(@key, PWideChar(valfields[i].Name), Length(valfields[i].Name), UINT(UT_STRING_SYMBOL));
-      rval := valfields[i].GetValue(recobj);
-      ProcessValue(rval, val);
-      Result := API.ValueSetValueToKey(sval, @key, @val);
-      API.ValueClear(@key);
-      API.ValueClear(@val);
-    end;
-  end;
-
-var
   pDisp: IDispatch;
   cCur: Currency;
   vt: Word;
@@ -1895,6 +1819,7 @@ var
   oArrItem: Variant;
   sArrItem: TSciterValue;
 begin
+  FAPI.ValueInit(SciterValue);
   vt := VarType(Value);
 
   if (vt and varArray) = varArray then
@@ -1902,7 +1827,6 @@ begin
     for i := VarArrayLowBound(Value, 1) to VarArrayHighBound(Value, 1) do
     begin
       oArrItem := VarArrayGet(Value, [i]);
-      API.ValueInit(@sArrItem);
       V2S(oArrItem, @sArrItem);
       API.ValueNthElementValueSet(SciterValue, i, @sArrItem);
     end;
@@ -1912,15 +1836,24 @@ begin
 
   case vt of
     varEmpty:
-      Result := 0;
+      begin
+        API.ValueInit(SciterValue);
+        Result := 0;
+      end;
     varNull:
-      Result := 0;
-    varString,
-    varUString,
+      begin
+        API.ValueInit(SciterValue);
+        Result := 0;
+      end;
+    varString:
+      begin
+        sWStr := Value;
+        Result:= FAPI.ValueStringDataSet(SciterValue, PWideChar(sWStr), Length(sWStr), 0);
+      end;
     varOleStr:
       begin
         sWStr := Value;
-        Result := API.ValueStringDataSet(SciterValue, PWideChar(sWStr), Length(sWStr), 0);
+        Result:= FAPI.ValueStringDataSet(SciterValue, PWideChar(sWStr), Length(sWStr), 0);
       end;
     varBoolean:
       begin
@@ -1931,25 +1864,27 @@ begin
       end;
     varByte,
     varSmallInt,
-    varShortInt,
     varInteger,
-    varWord:
-      Result := API.ValueIntDataSet(SciterValue, Integer(Value), T_INT, 0);
-    varUInt32:
+    varWord,
+    varLongWord:
       begin
-        c32 := Value;
-        Result := API.ValueIntDataSet(SciterValue, c32, T_INT, 0);
+        Result := FAPI.ValueIntDataSet(SciterValue, Integer(Value), T_INT, 0);
       end;
     varInt64:
-      Result := API.ValueIntDataSet(SciterValue, Value, T_INT, 0);
+      begin
+        i64 := Value;
+        Result := FAPI.ValueInt64DataSet(SciterValue, i64, T_INT, 0);
+      end;
     varSingle,
     varDouble:
-      Result := API.ValueFloatDataSet(SciterValue, Double(Value), T_FLOAT, 0);
+      begin
+        Result := FAPI.ValueFloatDataSet(SciterValue, Double(Value), T_FLOAT, 0);
+      end;
     varCurrency:
       begin
         cCur := Value;
         i64 := PInt64(@cCur)^;
-        Result := API.ValueInt64DataSet(SciterValue, i64, T_CURRENCY, 0);
+        Result := FAPI.ValueInt64DataSet(SciterValue, i64, T_CURRENCY, 0);
       end;
     varDate:
       begin
@@ -1958,23 +1893,18 @@ begin
         VariantTimeToSystemTime(d, st);
         SystemTimeToFileTime(st, ft);
         i64 := Int64(ft);
-        Result := API.ValueInt64DataSet(SciterValue, i64, T_DATE, 0);
+        Result := FAPI.ValueInt64DataSet(SciterValue, i64, T_DATE, 0);
       end;
     varDispatch:
       begin
         pDisp := IDispatch(Value);
         //pDisp._AddRef;
-        Result := API.ValueBinaryDataSet(SciterValue, PByte(pDisp), 1, T_OBJECT, 0);
+        Result := FAPI.ValueBinaryDataSet(SciterValue, PByte(pDisp), 1, T_OBJECT, 0);
       end;
-    else if vt = varSymbol then
-      begin
-        sWStr := TSymbolVarData(Value).VSymbol.Symbol;
-        Result := API.ValueStringDataSet(SciterValue, PWideChar(sWStr), Length(sWStr), UINT(UT_STRING_SYMBOL))
-      end
-    else if vt = varRecordEx then
-      ProcessRecord(SciterValue, TRecordVarData(Value).RecType, TRecordVarData(Value).RecObj)
     else
-      raise ESciterNotImplementedException.CreateFmt('Cannot convert VARIANT of type %d to Sciter value.', [vt]);
+      begin
+        raise ESciterNotImplementedException.CreateFmt('Cannot convert VARIANT of type %d to Sciter value.', [vt]);
+      end;
   end;
 end;
 
@@ -2197,12 +2127,7 @@ begin
     begin
       FillChar(ExcepInfo^, SizeOf(TExcepInfo), 0);
       with TExcepInfo(ExcepInfo^) do
-      begin
-        bstrSource := StringToOleStr(ClassName);
-        if ExceptObject is Exception then
-          bstrDescription := StringToOleStr(Exception(ExceptObject).Message);
         scode := E_FAIL;
-      end;
     end;
     Result := DISP_E_EXCEPTION;
   end;

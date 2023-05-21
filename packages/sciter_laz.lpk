@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="Sciter_Laz"/>
+    <Type Value="RunAndDesignTime"/>
+    <Author Value="Tranquil IT Systems"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <IncludeFiles Value="..\source"/>
+        <OtherUnitFiles Value="..\src;..\source"/>
+        <UnitOutputDirectory Value="..\lib\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+    </CompilerOptions>
+    <Description Value="Tranquil IT Sciter"/>
+    <Files>
+      <Item>
+        <Filename Value="..\source\Sciter.pas"/>
+        <UnitName Value="Sciter"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\SciterApi.pas"/>
+        <UnitName Value="SciterApi"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\SciterNative.pas"/>
+        <UnitName Value="SciterNative"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\TiScriptApi.pas"/>
+        <UnitName Value="TiScriptApi"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\MLang.pas"/>
+        <UnitName Value="MLang"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\Sciter.inc"/>
+        <Type Value="Include"/>
+      </Item>
+      <Item>
+        <Filename Value="..\source\SciterRegistry.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="SciterRegistry"/>
+      </Item>
+    </Files>
+    <RequiredPkgs>
+      <Item>
+        <PackageName Value="IDEIntf"/>
+      </Item>
+      <Item>
+        <PackageName Value="LCLBase"/>
+      </Item>
+      <Item>
+        <PackageName Value="FCL"/>
+      </Item>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
