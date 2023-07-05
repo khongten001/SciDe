@@ -2493,12 +2493,20 @@ var
   llResult: LRESULT;
   bHandled: BOOL;
   M: PMsg;
+  ScreenPoint: TPoint;
 begin
   if not DesignMode then
   begin
     case Message.Msg of
       WM_SIZE:
         Message.wParam := Message.wParam and (not Size_SourceIsInterface);
+      WM_MOUSEWHEEL:
+        begin
+          // Sciter expect Screen position instead of client position
+          ScreenPoint := ClientToScreen(TPoint.Create(Message.lParamlo, Message.lParamhi));
+          Message.lParamlo := ScreenPoint.X;
+          Message.lParamhi := ScreenPoint.Y;
+        end;
       WM_SETFOCUS:
         begin
           if Assigned(FOnFocus) then
