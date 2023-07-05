@@ -2497,6 +2497,8 @@ begin
   if not DesignMode then
   begin
     case Message.Msg of
+      WM_SIZE:
+        Message.wParam := Message.wParam and (not Size_SourceIsInterface);
       WM_SETFOCUS:
         begin
           if Assigned(FOnFocus) then
