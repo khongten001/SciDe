@@ -134,6 +134,7 @@ type
     FReason: Integer;
     FSource: IElement;
     FTarget: IElement;
+    FData: PSciterValue;
   public
     constructor Create(const Sciter: TSciter; const ASelf: IElement; var params: BEHAVIOR_EVENT_PARAMS);
     destructor Destroy; override;
@@ -143,6 +144,7 @@ type
     property Reason: Integer read FReason;
     property Source: IElement read FSource;
     property Target: IElement read FTarget;
+    property Data: PSciterValue read FData;
   end;
 
   TElementOnControlEvent = procedure(ASender: TObject; const Args: TElementOnControlEventArgs) of object;
@@ -954,6 +956,27 @@ implementation
 var
   Behaviors: TList;
 
+
+function RemoveSinkingFlags(value: BEHAVIOR_EVENTS): BEHAVIOR_EVENTS; overload;
+begin
+  Result := BEHAVIOR_EVENTS(UINT(value) and (not UINT(SINKING_MASK)));
+end;
+
+function RemoveSinkingFlags(value: MOUSE_EVENTS): MOUSE_EVENTS; overload;
+begin
+  Result := MOUSE_EVENTS(UINT(value) and (not UINT(SINKING_MASK)));
+end;
+
+function RemoveSinkingFlags(value: KEY_EVENTS): KEY_EVENTS; overload;
+begin
+  Result := KEY_EVENTS(UINT(value) and (not UINT(SINKING_MASK)));
+end;
+
+function RemoveSinkingFlags(value: INITIALIZATION_EVENTS): INITIALIZATION_EVENTS; overload;
+begin
+  Result := INITIALIZATION_EVENTS(UINT(value) and (not UINT(SINKING_MASK)));
+end;
+
 procedure SciterRegisterBehavior(Cls: TElementClass);
 begin
   if Behaviors = nil then
@@ -1324,7 +1347,7 @@ begin
     HANDLE_BEHAVIOR_EVENT:
       begin
         pBehaviorEventParams := prms;
-        if pBehaviorEventParams.cmd = DOCUMENT_COMPLETE then
+        if RemoveSinkingFlags(pBehaviorEventParams.cmd) = DOCUMENT_COMPLETE then
         begin
           sUri := '';
           if SciterVarType(@pBehaviorEventParams.data) = T_STRING then
@@ -3160,7 +3183,9 @@ var
 begin
   Result := False;
 
-  if (FFilterControlEvents <> BEHAVIOR_EVENTS_ALL) and (FFilterControlEvents <> params.cmd) then
+
+  if (FFilterControlEvents <> BEHAVIOR_EVENTS_ALL) and
+     (FFilterControlEvents <> RemoveSinkingFlags(params.cmd)) then
     Exit;
     
   pArgs := TElementOnControlEventArgs.Create(Sciter, Self, params);
@@ -3222,7 +3247,7 @@ begin
   Result := False;
   if BehaviorName = '' then Exit;
   
-  case params.cmd of
+  case RemoveSinkingFlags(params.cmd) of
     BEHAVIOR_ATTACH: Result := HandleBehaviorAttach;
     BEHAVIOR_DETACH: Result := HandleBehaviorDetach;
   end;
@@ -3234,7 +3259,7 @@ var
 begin
   Result := False;
 
-  if (FFilterKey <> KEY_EVENTS_ALL) and (FFilterKey <> params.cmd) then
+  if (FFilterKey <> KEY_EVENTS_ALL) and (FFilterKey <> RemoveSinkingFlags(params.cmd)) then
     Exit;
 
   pArgs := TElementOnKeyEventArgs.Create(Sciter, Self, params);
@@ -3305,7 +3330,7 @@ var
   pArgs: TElementOnMouseEventArgs;
 begin
   Result := False;
-  if (FFilterMouse <> MOUSE_EVENTS_ALL) and (FFilterMouse <> params.cmd) then
+  if (FFilterMouse <> MOUSE_EVENTS_ALL) and (FFilterMouse <> RemoveSinkingFlags(params.cmd)) then
     Exit;
 
   pArgs := TElementOnMouseEventArgs.Create(Sciter, Self, params);
@@ -4077,6 +4102,7 @@ begin
     FSource := ElementFactory(Sciter, params.he);
   FElement := ASelf;
   FReason := params.reason;
+  FData := @params.data;
 end;
 
 destructor TElementOnControlEventArgs.Destroy;
